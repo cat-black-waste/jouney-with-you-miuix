@@ -1,0 +1,56 @@
+name: Build APK
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools platforms;android-35 build-tools;35.0.0'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.9'
+
+      - name: Assemble release
+        run: gradle :app:assembleRelease --no-daemon --console=plain
+
+      - name: Collect APK
+        run: |
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk dist/jouney-with-you.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: jouney-with-you-apk
+          path: dist/jouney-with-you.apk
+          if-no-files-found: error
+
+      - name: Publish release
+        if: github.event_name == 'push'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="build-${GITHUB_RUN_NUMBER}"
+          gh release create "$TAG" dist/jouney-with-you.apk \
+            --title "jouney with you · ${GITHUB_RUN_NUMBER}" \
+            --notes "miuix single-instance motion demo: drag-scrub wordmark, fake permission probe, signature page." \
+            --latest

@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>jouney with you</title>
+<style>
+  @font-face{font-family:"SG";src:url("fonts/space-grotesk.ttf") format("truetype");font-weight:300 700;font-display:swap}
+  @font-face{font-family:"PM";src:url("fonts/plex-mono.ttf") format("truetype");font-weight:400;font-display:swap}
+  :root{
+    --bg:#FBFBF9;--ink:#0C0C0D;--muted:#8A8A90;--faint:#B6B6BC;
+    --accent:#FF5B37;--green:#2FB45A;--line:rgba(12,12,13,.075);
+    --ease:cubic-bezier(.16,1,.3,1);
+    --text:-apple-system,"SF Pro Text","Noto Sans SC","PingFang SC",system-ui,sans-serif;
+    --mono:"PM",ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#0B0B0C;overflow:hidden}
+  body{display:flex;align-items:center;justify-content:center;font-family:var(--text);color:var(--ink)}
+  .frame{position:relative;width:100vw;height:100dvh;max-width:430px;max-height:920px;
+    background:var(--bg);overflow:hidden;isolation:isolate}
+  @media (min-width:520px) and (min-height:700px){
+    body{background:radial-gradient(120% 90% at 50% 0%,#1D1D20 0%,#08080A 70%)}
+    .frame{border-radius:46px;box-shadow:0 60px 140px rgba(0,0,0,.7),0 0 0 1px rgba(255,255,255,.07)}
+  }
+  .aura{position:absolute;inset:-20% -10% auto -10%;height:72%;pointer-events:none;z-index:0;
+    background:radial-gradient(52% 46% at 22% 18%,rgba(255,140,95,.13),transparent 70%),
+               radial-gradient(46% 40% at 82% 8%,rgba(150,170,255,.10),transparent 72%);
+    filter:blur(10px)}
+  .vignette{position:absolute;inset:0;z-index:1;pointer-events:none;
+    background:radial-gradient(120% 100% at 50% 40%,transparent 55%,rgba(12,12,13,.045) 100%)}
+
+  .topline{position:absolute;left:34px;right:34px;top:calc(26px + env(safe-area-inset-top));
+    z-index:4;display:flex;align-items:center;justify-content:space-between}
+  .kicker{font-family:var(--mono);font-size:9.5px;letter-spacing:.3em;text-transform:uppercase;color:var(--faint)}
+  .brandmini{display:flex;align-items:center;gap:7px;font-family:var(--mono);font-size:9.5px;
+    letter-spacing:.22em;color:var(--faint);text-transform:uppercase}
+  .brandmini i{width:4px;height:4px;border-radius:50%;background:var(--accent);display:block}
+
+  .page{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;
+    padding:92px 34px calc(30px + env(safe-area-inset-bottom));
+    opacity:0;pointer-events:none;transform:translateY(12px);
+    transition:opacity .46s var(--ease),transform .62s var(--ease)}
+  .page.on{opacity:1;pointer-events:auto;transform:none}
+  .grow{flex:1}
+  .copy h1{margin:0;font-size:31px;line-height:1.16;font-weight:600;letter-spacing:-.022em}
+  .copy p{margin:9px 0 0;font-size:13.5px;line-height:1.62;color:var(--muted);max-width:19em}
+
+  .cta{appearance:none;border:0;width:100%;height:56px;border-radius:28px;cursor:pointer;
+    background:var(--ink);color:#fff;font-family:var(--text);font-size:15.5px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;gap:9px;
+    transition:transform .22s var(--ease),background .32s var(--ease),color .32s,box-shadow .4s;
+    box-shadow:0 14px 34px -16px rgba(12,12,13,.55)}
+  .cta:active{transform:scale(.977)}
+  .cta.ghost{background:rgba(12,12,13,.055);color:var(--ink);box-shadow:none}
+  .cta[disabled]{background:rgba(12,12,13,.055);color:rgba(12,12,13,.3);box-shadow:none;pointer-events:none}
+  .cta.done{background:var(--green);box-shadow:0 16px 34px -18px rgba(47,180,90,.75)}
+
+  .ticks{display:flex;gap:6px;margin:0 auto 22px;align-items:center}
+  .ticks i{display:block;height:2px;width:26px;border-radius:2px;background:rgba(12,12,13,.13);
+    transition:background .45s var(--ease),width .45s var(--ease)}
+  .ticks i.on{background:var(--ink);width:40px}
+
+  #markLayer{position:absolute;inset:0;z-index:3;display:grid;place-items:center;pointer-events:none}
+  #mark{position:relative;width:372px;height:192px;transform-origin:50% 50%;
+    will-change:transform,opacity;pointer-events:auto;cursor:grab;touch-action:pan-y;
+    -webkit-user-select:none;user-select:none}
+  #wordmark{display:block;width:372px;height:192px;overflow:visible}
+  #construct circle{transform-box:fill-box;transform-origin:50% 100%}
+  .pen{pointer-events:none}
+
+  #p1{padding-top:188px}
+  .probe{display:flex;flex-direction:column;align-items:center}
+  .ring{width:112px;height:112px;position:relative;display:grid;place-items:center}
+  .ring svg.ringsvg{position:absolute;inset:0;width:112px;height:112px;transform:rotate(-90deg);
+    transition:opacity .4s var(--ease),transform .5s var(--ease)}
+  .ring .track{fill:none;stroke:rgba(12,12,13,.065);stroke-width:4}
+  .ring .arc{fill:none;stroke:var(--accent);stroke-width:4;stroke-linecap:round;
+    stroke-dasharray:64 240;opacity:0;transition:opacity .3s}
+  .ring.running .arc{opacity:1;animation:spin 1.25s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+  .ring .done{position:absolute;inset:0;border-radius:50%;display:grid;place-items:center;
+    background:var(--green);color:#fff;transform:scale(.6);opacity:0;
+    transition:transform .55s cubic-bezier(.2,1.5,.35,1),opacity .28s}
+  .ring.ok .done{transform:scale(1);opacity:1}
+  .ring.ok svg.ringsvg{opacity:0;transform:rotate(90deg) scale(.9)}
+  .done svg path{stroke-dasharray:34;stroke-dashoffset:34;transition:stroke-dashoffset .38s .16s var(--ease)}
+  .ring.ok .done svg path{stroke-dashoffset:0}
+  .probe .label{margin-top:24px;font-size:16px;font-weight:600;letter-spacing:-.012em}
+  .probe .status{margin-top:7px;font-family:var(--mono);font-size:9.5px;letter-spacing:.26em;
+    text-transform:uppercase;color:var(--faint);transition:color .4s}
+  .probe .status.ok{color:var(--green)}
+
+  .rows{margin-top:36px;border-top:1px solid var(--line)}
+  .row{display:flex;align-items:center;gap:12px;padding:16px 2px;border-bottom:1px solid var(--line)}
+  .row .t{flex:1;font-size:14px;font-weight:500}
+  .row .s{font-family:var(--mono);font-size:9px;letter-spacing:.22em;text-transform:uppercase;color:var(--faint);
+    transition:color .35s}
+  .row .spin{width:11px;height:11px;border-radius:50%;border:1.5px solid rgba(12,12,13,.12);
+    border-top-color:var(--accent);opacity:0;transition:opacity .3s}
+  .row.scanning .spin{opacity:1;animation:spin .85s linear infinite}
+  .row.ok .s{color:var(--green)}
+  .row.ok .spin{display:none}
+  .note{margin-top:14px;font-size:11.5px;color:var(--faint);letter-spacing:.01em}
+
+  .signature{text-align:center;padding:0 6px}
+  .signature .rule{height:1px;background:var(--line);margin:0 0 18px}
+  .signature .by{font-size:13px;color:var(--muted)}
+  .signature .meta{margin-top:6px;font-family:var(--mono);font-size:9px;letter-spacing:.26em;
+    text-transform:uppercase;color:var(--faint)}
+
+  .scrim{position:absolute;inset:0;z-index:9;background:rgba(10,10,11,.28);
+    backdrop-filter:blur(14px) saturate(1.1);opacity:0;pointer-events:none;transition:opacity .3s var(--ease)}
+  .scrim.on{opacity:1;pointer-events:auto}
+  .sheet{position:absolute;z-index:10;left:50%;bottom:calc(30px + env(safe-area-inset-bottom));
+    width:calc(100% - 50px);max-width:340px;transform:translate(-50%,14px) scale(.98);opacity:0;
+    pointer-events:none;background:rgba(252,252,250,.92);backdrop-filter:blur(24px);
+    border-radius:26px;padding:24px 22px 16px;box-shadow:0 30px 70px -20px rgba(0,0,0,.5);
+    transition:.4s var(--ease)}
+  .sheet.on{opacity:1;transform:translate(-50%,0) scale(1);pointer-events:auto}
+  .sheet h3{margin:0 0 7px;font-size:17px;font-weight:650;letter-spacing:-.015em}
+  .sheet p{margin:0 0 16px;font-size:13px;line-height:1.6;color:var(--muted)}
+  @media (prefers-reduced-motion:reduce){*{animation:none!important;transition-duration:.001ms!important}}
+</style>
+</head>
+<body>
+<div class="frame" id="frame">
+  <div class="aura"></div>
+  <div class="vignette"></div>
+
+  <div class="topline">
+    <div class="kicker" id="kicker">arrival</div>
+    <div class="brandmini"><i></i><span id="brandmini">single instance</span></div>
+  </div>
+
+  <section class="page on" id="p0">
+    <div class="grow"></div>
+    <div class="copy">
+      <h1 id="greet">hi，早上好</h1>
+      <p>先在 o 上落一个圆，线从圆里往两边铺开，剩下的字一个一个画出来——拖着看，笔会跟着你走。</p>
+    </div>
+    <div style="height:26px"></div>
+    <div class="ticks"><i class="on"></i><i></i><i></i></div>
+    <button class="cta" id="next0">继续
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h13M13 6l6 6-6 6"/></svg>
+    </button>
+  </section>
+
+  <section class="page" id="p1">
+    <div class="probe">
+      <div class="ring" id="ring">
+        <svg class="ringsvg" viewBox="0 0 112 112">
+          <circle class="track" cx="56" cy="56" r="50"/>
+          <circle class="arc" cx="56" cy="56" r="50"/>
+        </svg>
+        <div class="done">
+          <svg width="38" height="38" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>
+        </div>
+      </div>
+      <div class="label" id="probeLabel">正在检测权限</div>
+      <div class="status" id="probeStatus">checking · 0/3</div>
+    </div>
+    <div class="rows" id="rows">
+      <div class="row"><div class="t">存储目录</div><div class="s">waiting</div><div class="spin"></div></div>
+      <div class="row"><div class="t">通知回执</div><div class="s">waiting</div><div class="spin"></div></div>
+      <div class="row"><div class="t">位置状态</div><div class="s">waiting</div><div class="spin"></div></div>
+    </div>
+    <div class="note">假检测：不申请也不需要任何真实权限。</div>
+    <div class="grow"></div>
+    <div class="ticks"><i></i><i class="on"></i><i></i></div>
+    <button class="cta" id="next1" disabled>下一步进入</button>
+  </section>
+
+  <section class="page" id="p2">
+    <div class="grow"></div>
+    <div class="signature">
+      <div class="rule"></div>
+      <div class="by">jouney with you</div>
+      <div class="meta">design · motion · kotlin</div>
+    </div>
+    <div class="grow"></div>
+    <div class="ticks"><i></i><i></i><i class="on"></i></div>
+    <button class="cta" id="start">开始使用</button>
+  </section>
+
+  <div id="markLayer">
+    <div id="mark" aria-label="jouney with you">
+      <svg id="wordmark" viewBox="0 0 372 192"></svg>
+    </div>
+  </div>
+
+  <div class="scrim" id="scrim"></div>
+  <div class="sheet" id="sheet">
+    <h3>这是演示版本</h3>
+    <p>“开始使用”是一个假按钮：点下去只弹这个面板，没有真实业务流程。</p>
+    <button class="cta ghost" id="sheetOk">知道了</button>
+  </div>
+</div>
+
+<script id="wordmark-data" type="application/json">{"upem": 1000, "width": 372, "height": 192, "glyphs": [{"c": "j", "d": "M-19.900146484375 -200V-101.4493408203125H46.63480224609375Q75.1497802734375 -101.4493408203125 75.1497802734375 -71.4493408203125V494.2501220703125H189.6005859375V-94.299560546875Q189.6005859375 -142.67474365234375 161.43795776367188 -171.33737182617188Q133.27532958984375 -200 85.2001953125 -200ZM132.37518310546875 556.7998046875Q100.47503662109375 556.7998046875 78.46243286132812 577.5748901367188Q56.4498291015625 598.3499755859375 56.4498291015625 631.900146484375Q56.4498291015625 665.6253051757812 78.46243286132812 686.3128967285156Q100.47503662109375 707.00048828125 132.37518310546875 707.00048828125Q165.27532958984375 707.00048828125 186.78793334960938 686.3128967285156Q208.300537109375 665.6253051757812 208.300537109375 631.900146484375Q208.300537109375 598.3499755859375 186.78793334960938 577.5748901367188Q165.27532958984375 556.7998046875 132.37518310546875 556.7998046875Z", "adv": 23.144, "x": 50.71199999999999, "y": 104.0, "s": 0.088, "w": 20.08166015625, "h": 79.81604296875, "left": -1.751212890625}, {"c": "o", "d": "M306.699951171875 -14Q232.699951171875 -14 174.31240844726562 16.262481689453125Q115.92486572265625 46.52496337890625 82.53732299804688 103.43746948242188Q49.1497802734375 160.3499755859375 49.1497802734375 239.47503662109375V254.77508544921875Q49.1497802734375 333.900146484375 82.53732299804688 390.8126525878906Q115.92486572265625 447.72515869140625 174.31240844726562 477.9876403808594Q232.699951171875 508.2501220703125 306.699951171875 508.2501220703125Q380.699951171875 508.2501220703125 439.0874938964844 477.9876403808594Q497.47503662109375 447.72515869140625 530.8625793457031 390.8126525878906Q564.2501220703125 333.900146484375 564.2501220703125 254.77508544921875V239.47503662109375Q564.2501220703125 160.3499755859375 530.8625793457031 103.43746948242188Q497.47503662109375 46.52496337890625 439.0874938964844 16.262481689453125Q380.699951171875 -14 306.699951171875 -14ZM306.699951171875 87.8507080078125Q369.599609375 87.8507080078125 409.699462890625 128.32550048828125Q449.79931640625 168.80029296875 449.79931640625 242.300048828125V251.9500732421875Q449.79931640625 325.4498291015625 410.1119689941406 365.92462158203125Q370.42462158203125 406.3994140625 306.699951171875 406.3994140625Q243.97528076171875 406.3994140625 203.78793334960938 365.92462158203125Q163.6005859375 325.4498291015625 163.6005859375 251.9500732421875V242.300048828125Q163.6005859375 168.80029296875 203.78793334960938 128.32550048828125Q243.97528076171875 87.8507080078125 306.699951171875 87.8507080078125Z", "adv": 53.943999999999996, "x": 69.856, "y": 104.0, "s": 0.088, "w": 45.328830078124994, "h": 45.9580107421875, "left": 4.3251806640625}, {"c": "u", "d": "M261.7998046875 -8.3499755859375Q204.8497314453125 -8.3499755859375 161.17474365234375 17.362579345703125Q117.499755859375 43.07513427734375 93.06228637695312 89.63766479492188Q68.62481689453125 136.2001953125 68.62481689453125 198.2501220703125V494.2501220703125H183.07562255859375V207.2001953125Q183.07562255859375 147.17547607421875 212.76296997070312 117.86306762695312Q242.4503173828125 88.5506591796875 296.2501220703125 88.5506591796875Q357.22491455078125 88.5506591796875 392.37469482421875 128.97552490234375Q427.52447509765625 169.400390625 427.52447509765625 243.82501220703125V494.2501220703125H541.9752807617188V0H429.52447509765625V69.37469482421875H412.57440185546875Q399.52447509765625 41.92486572265625 365.12457275390625 16.787445068359375Q330.72467041015625 -8.3499755859375 261.7998046875 -8.3499755859375Z", "adv": 54.12, "x": 119.79999999999998, "y": 104.0, "s": 0.088, "w": 41.6548408203125, "h": 44.228808593749996, "left": 6.03898388671875}, {"c": "n", "d": "M73.1497802734375 0V494.2501220703125H185.6005859375V424.87542724609375H202.5506591796875Q215.6005859375 453.1502685546875 250.00048828125 477.87518310546875Q284.400390625 502.60009765625 353.32525634765625 502.60009765625Q410.4503173828125 502.60009765625 454.0378112792969 476.8875427246094Q497.62530517578125 451.17498779296875 522.0627746582031 405.02496337890625Q546.500244140625 358.87493896484375 546.500244140625 296V0H432.0494384765625V287.0499267578125Q432.0494384765625 347.2496337890625 402.3620910644531 376.47454833984375Q372.67474365234375 405.699462890625 318.87493896484375 405.699462890625Q257.900146484375 405.699462890625 222.7503662109375 365.27459716796875Q187.6005859375 324.8497314453125 187.6005859375 250.42510986328125V0Z", "adv": 54.12, "x": 169.92, "y": 104.0, "s": 0.088, "w": 41.6548408203125, "h": 44.228808593749996, "left": 6.4371806640625}, {"c": "e", "d": "M298.7998046875 -14Q224.62481689453125 -14 168.2998046875 17.5Q111.97479248046875 49 80.56228637695312 106.41250610351562Q49.1497802734375 163.82501220703125 49.1497802734375 241.12506103515625V253.12506103515625Q49.1497802734375 330.60009765625 80.1497802734375 387.92510986328125Q111.1497802734375 445.2501220703125 166.88729858398438 476.7501220703125Q222.62481689453125 508.2501220703125 295.92486572265625 508.2501220703125Q368.0499267578125 508.2501220703125 421.7874450683594 476.4500732421875Q475.52496337890625 444.6500244140625 505.52496337890625 387.8499755859375Q535.5249633789062 331.0499267578125 535.5249633789062 255.39990234375V214.32476806640625H165.2506103515625Q167.42559814453125 156.32525634765625 206.31289672851562 121.26296997070312Q245.2001953125 86.20068359375 302.099853515625 86.20068359375Q357.72467041015625 86.20068359375 384.9120178222656 110.6005859375Q412.099365234375 135.00048828125 426.32427978515625 165.97528076171875L520.7498779296875 117.22491455078125Q506.57489013671875 90 480.07489013671875 59.32501220703125Q453.57489013671875 28.6500244140625 409.92486572265625 7.32501220703125Q366.27484130859375 -14 298.7998046875 -14ZM166.2506103515625 300.97528076171875H419.2491455078125Q415.2491455078125 350.27484130859375 381.8618469238281 379.1621398925781Q348.47454833984375 408.0494384765625 295.099853515625 408.0494384765625Q240.2501220703125 408.0494384765625 207.100341796875 379.1621398925781Q173.9505615234375 350.27484130859375 166.2506103515625 300.97528076171875Z", "adv": 51.128, "x": 220.04, "y": 104.0, "s": 0.088, "w": 42.80101611328125, "h": 45.9580107421875, "left": 4.3251806640625}, {"c": "y", "d": "M128.37469482421875 -200V-99.79931640625H400.82452392578125Q429.17449951171875 -99.79931640625 429.17449951171875 -69.79931640625V68.32476806640625H412.22442626953125Q403.52447509765625 50.099853515625 385.7370300292969 32.312408447265625Q367.9495849609375 14.52496337890625 337.9871520996094 3.087493896484375Q308.02471923828125 -8.3499755859375 261.7998046875 -8.3499755859375Q204.8497314453125 -8.3499755859375 161.17474365234375 17.362579345703125Q117.499755859375 43.07513427734375 93.06228637695312 89.5501708984375Q68.62481689453125 136.02520751953125 68.62481689453125 198.07513427734375V494.2501220703125H183.07562255859375V207.02520751953125Q183.07562255859375 147.00048828125 212.76296997070312 117.77557373046875Q242.4503173828125 88.5506591796875 296.2501220703125 88.5506591796875Q357.22491455078125 88.5506591796875 392.37469482421875 128.88803100585938Q427.52447509765625 169.22540283203125 427.52447509765625 243.6500244140625V494.2501220703125H541.9752807617188V-94.299560546875Q541.9752807617188 -142.67474365234375 513.8126525878906 -171.33737182617188Q485.6500244140625 -200 437.57489013671875 -200Z", "adv": 54.12, "x": 267.168, "y": 104.0, "s": 0.088, "w": 41.6548408203125, "h": 61.0940107421875, "left": 6.03898388671875}, {"c": "w", "d": "M120.1492919921875 0 43.1497802734375 494.2501220703125H157.12554931640625L210.22491455078125 77.12554931640625H227.17498779296875L301.8492431640625 494.2501220703125H486.3504638671875L561.0247192382812 77.12554931640625H577.9747924804688L631.0741577148438 494.2501220703125H745.0499267578125L668.0504150390625 0H477.2491455078125L402.57489013671875 417.12457275390625H385.62481689453125L310.9505615234375 0Z", "adv": 24.428, "x": 116.99900000000002, "y": 160.0, "s": 0.031, "w": 21.758904541015625, "h": 15.321753784179688, "left": 1.3376431884765625}, {"c": "i", "d": "M73.1497802734375 0V494.2501220703125H187.6005859375V0ZM130.37518310546875 556.7998046875Q98.47503662109375 556.7998046875 76.46243286132812 577.5748901367188Q54.4498291015625 598.3499755859375 54.4498291015625 631.900146484375Q54.4498291015625 665.6253051757812 76.46243286132812 686.3128967285156Q98.47503662109375 707.00048828125 130.37518310546875 707.00048828125Q163.27532958984375 707.00048828125 184.78793334960938 686.3128967285156Q206.300537109375 665.6253051757812 206.300537109375 631.900146484375Q206.300537109375 598.3499755859375 184.78793334960938 577.5748901367188Q163.27532958984375 556.7998046875 130.37518310546875 556.7998046875Z", "adv": 8.091, "x": 151.92700000000002, "y": 160.0, "s": 0.031, "w": 4.707371948242187, "h": 21.91701513671875, "left": 1.6879447021484375}, {"c": "t", "d": "M260.699951171875 0Q213.4498291015625 0 184.87469482421875 28.662628173828125Q156.299560546875 57.32525634765625 156.299560546875 105.700439453125V398.99951171875H26.699951171875V494.2501220703125H156.299560546875V653.1497802734375H270.7503662109375V494.2501220703125H412.699951171875V398.99951171875H270.7503662109375V125.2506103515625Q270.7503662109375 95.2506103515625 299.100341796875 95.2506103515625H398.2501220703125V0Z", "adv": 14.167, "x": 170.51800000000003, "y": 160.0, "s": 0.031, "w": 11.966, "h": 20.247643188476562, "left": 0.827698486328125}, {"c": "h", "d": "M73.1497802734375 0V700H187.6005859375V429.0504150390625H204.5506591796875Q213.2506103515625 446.4503173828125 231.03805541992188 463.4127502441406Q248.82550048828125 480.37518310546875 278.37542724609375 491.400146484375Q307.92535400390625 502.42510986328125 353.32525634765625 502.42510986328125Q410.4503173828125 502.42510986328125 454.0378112792969 476.7125549316406Q497.62530517578125 451 522.0627746582031 404.9374694824219Q546.500244140625 358.87493896484375 546.500244140625 296V0H432.0494384765625V287.0499267578125Q432.0494384765625 347.2496337890625 402.3620910644531 376.3870544433594Q372.67474365234375 405.52447509765625 318.87493896484375 405.52447509765625Q257.900146484375 405.52447509765625 222.7503662109375 365.1871032714844Q187.6005859375 324.8497314453125 187.6005859375 250.42510986328125V0Z", "adv": 19.065, "x": 195.18500000000003, "y": 160.0, "s": 0.031, "w": 14.673864379882813, "h": 21.7, "left": 2.2676431884765624}, {"c": "y", "d": "M128.37469482421875 -200V-99.79931640625H400.82452392578125Q429.17449951171875 -99.79931640625 429.17449951171875 -69.79931640625V68.32476806640625H412.22442626953125Q403.52447509765625 50.099853515625 385.7370300292969 32.312408447265625Q367.9495849609375 14.52496337890625 337.9871520996094 3.087493896484375Q308.02471923828125 -8.3499755859375 261.7998046875 -8.3499755859375Q204.8497314453125 -8.3499755859375 161.17474365234375 17.362579345703125Q117.499755859375 43.07513427734375 93.06228637695312 89.5501708984375Q68.62481689453125 136.02520751953125 68.62481689453125 198.07513427734375V494.2501220703125H183.07562255859375V207.02520751953125Q183.07562255859375 147.00048828125 212.76296997070312 117.77557373046875Q242.4503173828125 88.5506591796875 296.2501220703125 88.5506591796875Q357.22491455078125 88.5506591796875 392.37469482421875 128.88803100585938Q427.52447509765625 169.22540283203125 427.52447509765625 243.6500244140625V494.2501220703125H541.9752807617188V-94.299560546875Q541.9752807617188 -142.67474365234375 513.8126525878906 -171.33737182617188Q485.6500244140625 -200 437.57489013671875 -200Z", "adv": 19.065, "x": 243.15500000000003, "y": 160.0, "s": 0.031, "w": 14.673864379882813, "h": 21.521753784179687, "left": 2.127369323730469}, {"c": "o", "d": "M306.699951171875 -14Q232.699951171875 -14 174.31240844726562 16.262481689453125Q115.92486572265625 46.52496337890625 82.53732299804688 103.43746948242188Q49.1497802734375 160.3499755859375 49.1497802734375 239.47503662109375V254.77508544921875Q49.1497802734375 333.900146484375 82.53732299804688 390.8126525878906Q115.92486572265625 447.72515869140625 174.31240844726562 477.9876403808594Q232.699951171875 508.2501220703125 306.699951171875 508.2501220703125Q380.699951171875 508.2501220703125 439.0874938964844 477.9876403808594Q497.47503662109375 447.72515869140625 530.8625793457031 390.8126525878906Q564.2501220703125 333.900146484375 564.2501220703125 254.77508544921875V239.47503662109375Q564.2501220703125 160.3499755859375 530.8625793457031 103.43746948242188Q497.47503662109375 46.52496337890625 439.0874938964844 16.262481689453125Q380.699951171875 -14 306.699951171875 -14ZM306.699951171875 87.8507080078125Q369.599609375 87.8507080078125 409.699462890625 128.32550048828125Q449.79931640625 168.80029296875 449.79931640625 242.300048828125V251.9500732421875Q449.79931640625 325.4498291015625 410.1119689941406 365.92462158203125Q370.42462158203125 406.3994140625 306.699951171875 406.3994140625Q243.97528076171875 406.3994140625 203.78793334960938 365.92462158203125Q163.6005859375 325.4498291015625 163.6005859375 251.9500732421875V242.300048828125Q163.6005859375 168.80029296875 203.78793334960938 128.32550048828125Q243.97528076171875 87.8507080078125 306.699951171875 87.8507080078125Z", "adv": 19.003, "x": 272.72, "y": 160.0, "s": 0.031, "w": 15.968110595703125, "h": 16.189753784179686, "left": 1.5236431884765624}, {"c": "u", "d": "M261.7998046875 -8.3499755859375Q204.8497314453125 -8.3499755859375 161.17474365234375 17.362579345703125Q117.499755859375 43.07513427734375 93.06228637695312 89.63766479492188Q68.62481689453125 136.2001953125 68.62481689453125 198.2501220703125V494.2501220703125H183.07562255859375V207.2001953125Q183.07562255859375 147.17547607421875 212.76296997070312 117.86306762695312Q242.4503173828125 88.5506591796875 296.2501220703125 88.5506591796875Q357.22491455078125 88.5506591796875 392.37469482421875 128.97552490234375Q427.52447509765625 169.400390625 427.52447509765625 243.82501220703125V494.2501220703125H541.9752807617188V0H429.52447509765625V69.37469482421875H412.57440185546875Q399.52447509765625 41.92486572265625 365.12457275390625 16.787445068359375Q330.72467041015625 -8.3499755859375 261.7998046875 -8.3499755859375Z", "adv": 19.065, "x": 302.223, "y": 160.0, "s": 0.031, "w": 14.673864379882813, "h": 15.58060302734375, "left": 2.127369323730469}]}</script>
+<script>
+(() => {
+  const NS = 'http://www.w3.org/2000/svg';
+  const frame = document.getElementById('frame');
+  const mark = document.getElementById('mark');
+  const svg = document.getElementById('wordmark');
+  const data = JSON.parse(document.getElementById('wordmark-data').textContent);
+
+  const INK = [12,12,13], GRAY = [196,196,202], ACCENT = [255,91,55];
+  const lerpC = (a,b,t) => a.map((v,i)=>v+(b[i]-v)*t);
+  const rgb = c => `rgb(${c.map(v=>Math.round(v)).join(',')})`;
+  const clamp = (v,a=0,b=1) => Math.min(b, Math.max(a, v));
+  const smooth = t => { t = clamp(t); return t*t*(3-2*t); };
+  const easeOut = t => 1 - Math.pow(1 - clamp(t), 3);
+
+  // ---------- construction layer: circle -> baseline ----------
+  const construct = document.createElementNS(NS,'g');
+  construct.setAttribute('id','construct');
+  const circle = document.createElementNS(NS,'circle');
+  circle.setAttribute('cx','96.9'); circle.setAttribute('cy','82.1'); circle.setAttribute('r','22.9');
+  circle.setAttribute('fill','none');
+  circle.setAttribute('stroke', rgb(GRAY));
+  circle.setAttribute('stroke-width','1.6');
+  circle.setAttribute('pathLength','1');
+  circle.setAttribute('stroke-dasharray','1 1');
+  circle.setAttribute('stroke-dashoffset','1');
+  construct.appendChild(circle);
+
+  const railL = document.createElementNS(NS,'line');
+  const railR = document.createElementNS(NS,'line');
+  [[railL, 96.9, 50],[railR, 96.9, 322]].forEach(([el,x1,x2]) => {
+    el.setAttribute('x1', String(x1)); el.setAttribute('x2', String(x2));
+    el.setAttribute('y1','104'); el.setAttribute('y2','104');
+    el.setAttribute('stroke','rgba(12,12,13,.22)');
+    el.setAttribute('stroke-width','1');
+    el.setAttribute('pathLength','1');
+    el.setAttribute('stroke-dasharray','1 1');
+    el.setAttribute('stroke-dashoffset','1');
+    construct.appendChild(el);
+  });
+  // tick marks: the measuring scaffold the letters stand on
+  const ticks = document.createElementNS(NS,'g');
+  data.glyphs.forEach(g => {
+    const t = document.createElementNS(NS,'line');
+    t.setAttribute('x1', String(g.x)); t.setAttribute('x2', String(g.x));
+    t.setAttribute('y1','104'); t.setAttribute('y2','111');
+    t.setAttribute('stroke','rgba(12,12,13,.14)');
+    t.setAttribute('stroke-width','1');
+    t.style.opacity = '0';
+    t.style.transition = 'opacity .3s linear';
+    ticks.appendChild(t);
+  });
+  construct.appendChild(ticks);
+  svg.appendChild(construct);
+
+  // ---------- letters: each glyph is a set of contour pieces ----------
+  const letters = [];
+  data.glyphs.forEach((g, i) => {
+    const grp = document.createElementNS(NS,'g');
+    grp.setAttribute('transform', `translate(${g.x} ${g.y}) scale(${g.s} ${-g.s})`);
+
+    const guide = document.createElementNS(NS,'path');
+    guide.setAttribute('d', g.d);
+    guide.setAttribute('fill', rgb(GRAY));
+    guide.setAttribute('fill-opacity','0');
+
+    const fill = document.createElementNS(NS,'path');
+    fill.setAttribute('d', g.d);
+    fill.setAttribute('fill', rgb(INK));
+    fill.setAttribute('fill-opacity','0');
+
+    grp.appendChild(guide);
+    grp.appendChild(fill);
+
+    const contours = g.d.split(/(?=M)/g).filter(x => x.trim().length > 2);
+    const parts = contours.map(cd => {
+      const el = document.createElementNS(NS,'path');
+      el.setAttribute('d', cd);
+      el.setAttribute('fill','none');
+      el.setAttribute('stroke', rgb(GRAY));
+      el.setAttribute('stroke-width', String(1.9 / g.s));
+      el.setAttribute('stroke-linejoin','round');
+      el.setAttribute('pathLength','1');
+      el.setAttribute('stroke-dasharray','1 1');
+      el.setAttribute('stroke-dashoffset','1');
+      grp.appendChild(el);
+      return { el, len: 0, local: 0 };
+    });
+
+    grp.style.visibility = 'hidden';
+    svg.appendChild(grp);
+    letters.push({ g, grp, guide, fill, parts, p: 0, start: 0, dur: 1, totalLen: 0, idx: i });
+  });
+
+  svg.appendChild((() => {
+    const g = document.createElementNS(NS,'g'); g.setAttribute('class','pen');
+    const dot = document.createElementNS(NS,'circle');
+    dot.setAttribute('r','3.2'); dot.setAttribute('fill', rgb(ACCENT));
+    g.appendChild(dot);
+    const ghosts = [];
+    for (let j=1;j<=3;j++){
+      const c = document.createElementNS(NS,'circle');
+      c.setAttribute('r', String(3.2 - j*0.7));
+      c.setAttribute('fill', rgb(ACCENT));
+      c.setAttribute('opacity', String(0.3/j));
+      g.appendChild(c); ghosts.push(c);
+    }
+    g.setAttribute('opacity','0');
+    g._dot = dot; g._ghosts = ghosts;
+    return g;
+  })());
+  const pen = svg.lastChild;
+
+  // constant pen speed: a letter's duration follows the real outline length
+  let cursor = 900;
+  const order = [1, 0, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
+  order.forEach(idx => {
+    const L = letters[idx];
+    L.parts.forEach(pt => { pt.len = pt.el.getTotalLength(); });
+    L.totalLen = L.parts.reduce((a,b) => a + b.len, 0);
+    const screenLen = L.totalLen * L.g.s;
+    L.dur = Math.max(150, Math.min(480, screenLen / 1.45));
+    L.start = cursor;
+    cursor += L.dur + 70;
+  });
+  const T_END = cursor + 200;
+
+  // ---------- state ----------
+  const state = {
+    page: 0,
+    slots: [ {y:.40, s:1.0, o:1}, {y:.155, s:.40, o:.62}, {y:.355, s:.94, o:1} ],
+    cur: {y:.40, s:1.0, o:1},
+    px: null, active: false, vx: 0, lastPx: 0, startPx: 0, moved: false,
+    autoDone: false, t0: performance.now()
+  };
+  const baseScale = () => Math.min(1.04, (frame.clientWidth - 54) / 372);
+
+  function localX(clientX){
+    const r = mark.getBoundingClientRect();
+    return (clientX - r.left) / r.width * 372;
+  }
+  let lastMove = 0;
+  mark.addEventListener('pointerdown', e => {
+    if (state.page !== 0) return;
+    state.active = true; state.px = localX(e.clientX); state.lastPx = state.px;
+    state.startPx = state.px; state.moved = false; state.autoDone = true;
+    lastMove = performance.now(); mark.setPointerCapture?.(e.pointerId);
+  });
+  addEventListener('pointermove', e => {
+    if (!state.active || state.page !== 0) return;
+    const x = localX(e.clientX);
+    const now = performance.now();
+    const dt = Math.max(8, now - lastMove); lastMove = now;
+    state.vx = (x - state.lastPx) / dt * 16;
+    state.lastPx = x; state.px = x;
+    if (Math.abs(x - state.startPx) > 6) state.moved = true;
+  }, {passive:true});
+  const release = () => {
+    if (!state.active) return;
+    state.active = false; state.px = null;
+  };
+  addEventListener('pointerup', release);
+  addEventListener('pointercancel', release);
+
+  // tap the mark to fast-forward the writing
+  mark.addEventListener('click', () => {
+    if (state.page !== 0 || state.moved) return;
+    if (!state.autoDone) state.t0 -= T_END;
+  });
+
+  // ---------- nav ----------
+  const kicker = document.getElementById('kicker');
+  const brandmini = document.getElementById('brandmini');
+  function setPage(n){
+    state.page = n;
+    document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('on', i===n));
+    kicker.textContent = n===0 ? 'arrival' : n===1 ? 'clearance' : 'signature';
+    brandmini.textContent = n===0 ? 'single instance' : n===1 ? 'permission probe' : 'license';
+    if (n===1) runProbe();
+    if (n===0) {
+      state.t0 = performance.now(); state.autoDone = false;
+      letters.forEach(L => { L.p = 0; });
+    }
+  }
+  document.getElementById('next0').onclick = () => setPage(1);
+  document.getElementById('next1').onclick = () => setPage(2);
+  document.getElementById('start').onclick = () => { scrim.classList.add('on'); sheet.classList.add('on'); };
+  const scrim = document.getElementById('scrim');
+  const sheet = document.getElementById('sheet');
+  const closeSheet = () => { scrim.classList.remove('on'); sheet.classList.remove('on'); };
+  document.getElementById('sheetOk').onclick = closeSheet;
+  scrim.onclick = closeSheet;
+
+  // ---------- probe ----------
+  const ring = document.getElementById('ring');
+  const probeLabel = document.getElementById('probeLabel');
+  const probeStatus = document.getElementById('probeStatus');
+  const next1 = document.getElementById('next1');
+  let timers = [];
+  function runProbe(){
+    timers.forEach(clearTimeout); timers = [];
+    const rows = [...document.querySelectorAll('#rows .row')];
+    ring.classList.remove('ok'); ring.classList.add('running');
+    probeLabel.textContent = '正在检测权限';
+    probeStatus.textContent = 'checking · 0/3'; probeStatus.classList.remove('ok');
+    next1.disabled = true; next1.classList.remove('done');
+    rows.forEach(r => { r.classList.remove('ok','scanning'); r.querySelector('.s').textContent='waiting'; });
+    rows.forEach((r,i) => {
+      timers.push(setTimeout(() => r.classList.add('scanning'), 200 + i*320));
+      timers.push(setTimeout(() => {
+        r.classList.remove('scanning'); r.classList.add('ok');
+        r.querySelector('.s').textContent = 'granted';
+        probeStatus.textContent = `checking · ${i+1}/3`;
+        if (i === rows.length-1) finishProbe();
+      }, 820 + i*460));
+    });
+  }
+  function finishProbe(){
+    ring.classList.remove('running'); ring.classList.add('ok');
+    probeLabel.textContent = '全部就绪';
+    probeStatus.textContent = 'ready · 3/3'; probeStatus.classList.add('ok');
+    next1.disabled = false; next1.classList.add('done');
+  }
+
+  // ---------- loop ----------
+  let last = performance.now();
+  function frameLoop(now){
+    const dt = Math.min(.05, (now-last)/1000); last = now;
+
+    const slot = state.slots[state.page];
+    const k = 1 - Math.exp(-dt * (state.page===0 ? 9 : 6.2));
+    state.cur.y += (slot.y - state.cur.y) * k;
+    state.cur.s += (slot.s - state.cur.s) * k;
+    state.cur.o += (slot.o - state.cur.o) * k;
+    const off = state.cur.y * frame.clientHeight - frame.clientHeight/2;
+    mark.style.transform = `translateY(${off.toFixed(2)}px) scale(${(baseScale()*state.cur.s).toFixed(4)})`;
+    mark.style.opacity = state.cur.o.toFixed(3);
+
+    const t = (state.page === 0) ? now - state.t0 : 1e9;
+    const scrubbing = state.page === 0 && state.active && state.px !== null;
+
+    // construction: circle draws, then squashes into the baseline
+    const cirP = scrubbing ? 1 : easeOut(t / 300);
+    const morph = scrubbing ? 1 : clamp((t - 300) / 560);
+    circle.setAttribute('stroke-dashoffset', String(1 - cirP));
+    const oP = letters[1] ? letters[1].p : 0;
+    circle.style.opacity = String(clamp(cirP) * (1 - smooth(oP)));
+    railL.setAttribute('stroke-dashoffset', String(1 - easeOut(morph)));
+    railR.setAttribute('stroke-dashoffset', String(1 - easeOut(morph)));
+
+    // letters: progress is split across contour pieces by length
+    letters.forEach((L, i) => {
+      let p;
+      if (scrubbing){
+        p = smooth(clamp((state.px - (L.g.x - 16)) / (L.g.w + 34)));
+      } else if (state.page !== 0 || state.autoDone){
+        p = 1;
+      } else {
+        p = clamp((t - L.start) / L.dur);
+      }
+      L.p = p;
+      L.grp.style.visibility = p > 0.002 ? 'visible' : 'hidden';
+      let acc = 0;
+      L.parts.forEach(pt => {
+        const local = clamp((p * L.totalLen - acc) / pt.len);
+        acc += pt.len;
+        pt.local = local;
+        pt.el.setAttribute('stroke-dashoffset', String(1 - local));
+        pt.el.setAttribute('stroke', rgb(lerpC(GRAY, INK, smooth(p))));
+      });
+      const dry = smooth((p - .9) / .1);
+      L.fill.setAttribute('fill-opacity', String(dry));
+      L.fill.setAttribute('fill', rgb(lerpC(lerpC(GRAY, INK, p), INK, dry)));
+      L.guide.setAttribute('fill-opacity', String(0.05 * (1 - smooth(p))));
+      ticks.children[i].style.opacity = p > 0.02 ? String(1 - smooth(p)) : '0';
+    });
+
+    // pen: rides the contour currently being written
+    let active = null, activePart = null;
+    for (const L of letters){
+      if (L.p <= 0.002 || L.p >= 0.999) continue;
+      for (const pt of L.parts){
+        if (pt.local > 0.002 && pt.local < 0.999) { active = L; activePart = pt; }
+      }
+    }
+    if (active && activePart && (scrubbing || !state.autoDone)){
+      const s = active.g.s;
+      const put = (el, frac) => {
+        const pos = activePart.el.getPointAtLength(clamp(frac) * activePart.len);
+        el.setAttribute('cx', String(active.g.x + s*pos.x));
+        el.setAttribute('cy', String(active.g.y - s*pos.y));
+      };
+      put(pen._dot, activePart.local);
+      pen._ghosts.forEach((g, gi) => put(g, activePart.local - (gi+1)*0.06));
+      pen.setAttribute('opacity','1');
+    } else {
+      pen.setAttribute('opacity','0');
+    }
+
+    state.vx *= Math.exp(-dt * 9);
+    requestAnimationFrame(frameLoop);
+  }
+
+  const h = new Date().getHours();
+  document.getElementById('greet').innerHTML =
+    `hi，${h<5?'夜深了':h<11?'早上好':h<14?'中午好':h<18?'下午好':h<23?'晚上好':'夜深了'}`;
+
+  setPage(0);
+  requestAnimationFrame(frameLoop);
+})();
+</script>
+</body>
+</html>
